@@ -184,22 +184,89 @@ response = requests.post(url, headers=headers, files=files)
 print(response.json())
 ```
 
-## 🐳 Docker (Opcional)
+## 🐳 Docker
 
-Para containerizar a aplicação, você pode criar um `Dockerfile`:
+### Build da Imagem
 
-```dockerfile
-FROM python:3.9-slim
+A imagem Docker está configurada para ser publicada no Docker Hub como `automacaodebaixocusto/facecrop-api`.
 
-WORKDIR /app
+#### Build Local
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```bash
+docker build -t automacaodebaixocusto/facecrop-api:latest .
 ```
+
+#### Build e Push para Docker Hub
+
+**Linux/Mac:**
+```bash
+chmod +x build-and-push.sh
+./build-and-push.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\build-and-push.ps1
+```
+
+Ou manualmente:
+```bash
+docker build -t automacaodebaixocusto/facecrop-api:latest .
+docker push automacaodebaixocusto/facecrop-api:latest
+```
+
+### Executar com Docker Compose
+
+```bash
+# Criar arquivo .env com sua API_KEY
+echo "API_KEY=sua-chave-secreta" > .env
+
+# Iniciar
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Parar
+docker-compose down
+```
+
+### Deploy em Docker Swarm
+
+1. **Inicializar Swarm (se ainda não estiver inicializado):**
+```bash
+docker swarm init
+```
+
+2. **Criar secret para API_KEY (opcional, mais seguro):**
+```bash
+echo "sua-chave-secreta" | docker secret create api_key -
+```
+
+3. **Deploy do stack:**
+```bash
+# Exportar API_KEY como variável de ambiente
+export API_KEY=sua-chave-secreta
+
+# Deploy
+docker stack deploy -c docker-stack.yml facecrop
+
+# Verificar status
+docker stack services facecrop
+
+# Ver logs
+docker service logs facecrop_facecrop-api
+
+# Remover stack
+docker stack rm facecrop
+```
+
+### Variáveis de Ambiente
+
+A API key pode ser configurada via:
+- Arquivo `.env` (desenvolvimento)
+- Variável de ambiente `API_KEY` (produção)
+- Docker secrets (Docker Swarm - mais seguro)
 
 ## 📊 Casos de Uso
 
@@ -236,6 +303,12 @@ Acesse a documentação interativa em:
 facecrop-api/
 ├── main.py              # Aplicação FastAPI
 ├── requirements.txt     # Dependências
+├── Dockerfile          # Imagem Docker
+├── docker-compose.yml  # Compose para desenvolvimento
+├── docker-stack.yml    # Stack para Docker Swarm
+├── .dockerignore       # Arquivos ignorados no build
+├── build-and-push.sh   # Script de build (Linux/Mac)
+├── build-and-push.ps1  # Script de build (Windows)
 ├── .env                # Configurações (não versionado)
 ├── env.example         # Exemplo de configuração
 ├── README.md           # Este arquivo

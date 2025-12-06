@@ -3,7 +3,7 @@ FaceCrop API
 API para detecção facial e corte inteligente de vídeo
 FastAPI com OpenCV
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException, Security, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Security, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
@@ -13,6 +13,7 @@ import time
 from utils.detector import get_detector
 from utils.image_handler import process_uploaded_file, download_image_from_url
 from utils.auth import verify_api_key
+from utils.security import SecurityMiddleware
 
 # Inicializar FastAPI
 app = FastAPI(
@@ -20,6 +21,9 @@ app = FastAPI(
     description="API para detectar posição do nariz em frames de vídeo para corte inteligente 9:16",
     version="1.0.0"
 )
+
+# Adicionar middleware de segurança (deve vir antes do CORS)
+app.add_middleware(SecurityMiddleware)
 
 # Configurar CORS (ajuste conforme necessário)
 app.add_middleware(
@@ -179,6 +183,18 @@ async def detect_from_url(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno ao processar imagem: {str(e)}"
         )
+
+
+# Handler 404 customizado
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    """
+    Handler customizado para 404 - não expõe informações sobre paths tentados.
+    """
+    return JSONResponse(
+        status_code=404,
+        content={"detail": "Not found"}
+    )
 
 
 if __name__ == "__main__":
