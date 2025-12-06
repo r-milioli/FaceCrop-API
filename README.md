@@ -4,16 +4,18 @@ API leve desenvolvida em Python com FastAPI que detecta a posição do nariz do 
 
 ## 🚀 Características
 
-- **Detecção facial** usando OpenCV (compatível com Python 3.13+)
+- **Detecção facial** usando OpenCV Headless (compatível com Python 3.13+)
 - **Autenticação por API Key** para segurança
+- **Middleware de segurança** para proteção contra exploração
 - **Suporte a múltiplas faces** (seleciona a maior automaticamente)
 - **Dois métodos de entrada**: upload de arquivo ou URL
 - **Processamento assíncrono** com FastAPI
-- **Documentação automática** (Swagger UI)
+- **Documentação automática** (Swagger UI e ReDoc)
+- **Pronto para Docker** com suporte a Docker Swarm
 
 ## 📋 Requisitos
 
-- Python 3.9+
+- Python 3.9+ (testado com Python 3.13)
 - pip
 
 ## 🔧 Instalação
@@ -65,6 +67,14 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 A API estará disponível em: `http://localhost:8000`
 
 Documentação interativa (Swagger): `http://localhost:8000/docs`
+
+### Teste Rápido
+
+Execute o script de teste para verificar se tudo está funcionando:
+
+```bash
+python test_local.py
+```
 
 ## 📡 Endpoints
 
@@ -152,6 +162,10 @@ Configure sua API key no arquivo `.env`:
 API_KEY=sua-chave-secreta
 ```
 
+A API key também pode ser configurada via:
+- Variável de ambiente `API_KEY` (produção)
+- Arquivo via `API_KEY_FILE` (Docker Secrets)
+
 ## 📝 Exemplo de Uso
 
 ### cURL - Upload de arquivo
@@ -186,9 +200,15 @@ print(response.json())
 
 ## 🐳 Docker
 
-### Build da Imagem
+### Imagem Docker Hub
 
-A imagem Docker está configurada para ser publicada no Docker Hub como `automacaodebaixocusto/facecrop-api`.
+A imagem está disponível no Docker Hub: `automacaodebaixocusto/facecrop-api`
+
+```bash
+docker pull automacaodebaixocusto/facecrop-api:latest
+```
+
+### Build da Imagem
 
 #### Build Local
 
@@ -261,6 +281,12 @@ docker service logs facecrop_facecrop-api
 docker stack rm facecrop
 ```
 
+**Para usar Docker Secrets**, use `docker-stack-secrets.yml`:
+
+```bash
+docker stack deploy -c docker-stack-secrets.yml facecrop
+```
+
 ### Variáveis de Ambiente
 
 A API key pode ser configurada via:
@@ -284,40 +310,90 @@ A API key pode ser configurada via:
 
 ## 🔒 Segurança
 
-- Autenticação por API Key obrigatória
-- Validação de formato de arquivo
-- Sanitização de URLs (proteção SSRF)
-- Limite de tamanho de upload
-- Timeout para downloads
+- **Autenticação por API Key** obrigatória para endpoints de detecção
+- **Middleware de segurança** que bloqueia tentativas de acesso a arquivos sensíveis
+- **Validação de formato de arquivo** (apenas imagens permitidas)
+- **Sanitização de URLs** (proteção SSRF)
+- **Limite de tamanho de upload** (10MB)
+- **Timeout para downloads** (5 segundos)
+- **Handler 404 customizado** que não expõe informações sensíveis
+- **Proteção contra path traversal** e exploração de diretórios
+
+### Middleware de Segurança
+
+O middleware bloqueia automaticamente tentativas de acesso a:
+- Arquivos de configuração (`.env`, `.config`, etc.)
+- Arquivos do Git (`.git`, `.gitignore`, etc.)
+- Arquivos de sistema e temporários
+- Scripts executáveis
 
 ## 📚 Documentação
 
 Acesse a documentação interativa em:
 
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+- **Swagger UI**: `http://localhost:8000/docs`
+- **ReDoc**: `http://localhost:8000/redoc`
+- **OpenAPI Schema**: `http://localhost:8000/openapi.json`
 
 ## 🛠️ Estrutura do Projeto
 
 ```
 facecrop-api/
-├── main.py              # Aplicação FastAPI
-├── requirements.txt     # Dependências
-├── Dockerfile          # Imagem Docker
-├── docker-compose.yml  # Compose para desenvolvimento
-├── docker-stack.yml    # Stack para Docker Swarm
-├── .dockerignore       # Arquivos ignorados no build
-├── build-and-push.sh   # Script de build (Linux/Mac)
-├── build-and-push.ps1  # Script de build (Windows)
-├── .env                # Configurações (não versionado)
-├── env.example         # Exemplo de configuração
-├── README.md           # Este arquivo
+├── main.py                  # Aplicação FastAPI
+├── requirements.txt         # Dependências
+├── Dockerfile              # Imagem Docker
+├── docker-compose.yml      # Compose para desenvolvimento
+├── docker-stack.yml        # Stack para Docker Swarm
+├── docker-stack-secrets.yml # Stack com Docker Secrets
+├── .dockerignore           # Arquivos ignorados no build
+├── build-and-push.sh       # Script de build (Linux/Mac)
+├── build-and-push.ps1      # Script de build (Windows)
+├── test_local.py           # Script de teste local
+├── .env                    # Configurações (não versionado)
+├── env.example             # Exemplo de configuração
+├── README.md               # Este arquivo
+├── DEPLOY.md               # Guia de deploy
+├── TROUBLESHOOTING.md      # Guia de troubleshooting
+├── NOTA_MEDIAPIPE.md       # Nota sobre MediaPipe
 └── utils/
-    ├── auth.py         # Autenticação por API Key
-    ├── detector.py     # Lógica OpenCV
-    └── image_handler.py # Download/Upload
+    ├── auth.py             # Autenticação por API Key
+    ├── detector.py         # Lógica OpenCV
+    ├── image_handler.py    # Download/Upload
+    └── security.py         # Middleware de segurança
 ```
+
+## 🐛 Troubleshooting
+
+Se encontrar problemas, consulte o arquivo `TROUBLESHOOTING.md` para soluções comuns.
+
+### Problemas Comuns
+
+1. **Erro ao iniciar**: Verifique se todas as dependências estão instaladas
+2. **Porta em uso**: Use outra porta ou pare o processo que está usando a porta 8000
+3. **Erro 401**: Verifique se o arquivo `.env` existe e contém `API_KEY`
+4. **Erro com OpenCV**: Certifique-se de usar `opencv-python-headless` (já incluído)
+
+Execute o script de teste para diagnóstico:
+
+```bash
+python test_local.py
+```
+
+## 📦 Tecnologias Utilizadas
+
+- **FastAPI** - Framework web moderno e rápido
+- **OpenCV Headless** - Processamento de imagens sem dependências gráficas
+- **Uvicorn** - Servidor ASGI de alta performance
+- **Pillow** - Manipulação de imagens
+- **Pydantic** - Validação de dados
+- **Python-dotenv** - Gerenciamento de variáveis de ambiente
 
 ## 📄 Licença
 
 Este projeto é open-source e está disponível para uso livre.
+
+## 🔗 Links Úteis
+
+- **Docker Hub**: `automacaodebaixocusto/facecrop-api`
+- **Documentação FastAPI**: https://fastapi.tiangolo.com
+- **Documentação OpenCV**: https://docs.opencv.org
